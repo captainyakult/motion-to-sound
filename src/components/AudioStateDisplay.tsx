@@ -1,14 +1,13 @@
 "use client";
 
-import type { AudioBlend } from "@/lib/mapping";
+import type { VelocityAudioState } from "@/lib/mapping";
 
 interface Props {
-  blend: AudioBlend;
-  audioLoaded: boolean;
+  audioState: VelocityAudioState;
   audioStarted: boolean;
 }
 
-export default function AudioStateDisplay({ blend, audioLoaded, audioStarted }: Props) {
+export default function AudioStateDisplay({ audioState, audioStarted }: Props) {
   const stateColors: Record<string, string> = {
     idle: "#4ade80",
     accelerating: "#f97316",
@@ -17,14 +16,8 @@ export default function AudioStateDisplay({ blend, audioLoaded, audioStarted }: 
 
   return (
     <div className="panel">
-      <h2>Engine State</h2>
+      <h2>Audio State</h2>
 
-      <div className="status-row">
-        <span className="label">Audio Loaded</span>
-        <span className={`badge ${audioLoaded ? "badge-ok" : "badge-warn"}`}>
-          {audioLoaded ? "YES" : "NO"}
-        </span>
-      </div>
       <div className="status-row">
         <span className="label">Audio Playing</span>
         <span className={`badge ${audioStarted ? "badge-ok" : "badge-warn"}`}>
@@ -34,57 +27,31 @@ export default function AudioStateDisplay({ blend, audioLoaded, audioStarted }: 
 
       <div
         className="engine-state-badge"
-        style={{ backgroundColor: stateColors[blend.engineState] }}
+        style={{ backgroundColor: stateColors[audioState.engineState] }}
       >
-        {blend.engineState.toUpperCase()}
+        {audioState.engineState.toUpperCase()}
       </div>
 
-      <h3>Audio Blend</h3>
-      <div className="blend-bars">
-        <div className="blend-row">
-          <span className="label">Idle</span>
-          <div className="blend-bar-bg">
-            <div
-              className="blend-bar"
-              style={{
-                width: `${blend.idleVolume * 100}%`,
-                backgroundColor: "#4ade80",
-              }}
-            />
-          </div>
-          <span className="blend-pct">{(blend.idleVolume * 100).toFixed(0)}%</span>
+      <div className="data-grid" style={{ marginTop: "0.75rem" }}>
+        <div className="data-row highlight">
+          <span className="label">Frequency</span>
+          <span className="value">{audioState.frequency.toFixed(0)} Hz</span>
         </div>
-        <div className="blend-row">
-          <span className="label">Accel</span>
-          <div className="blend-bar-bg">
-            <div
-              className="blend-bar"
-              style={{
-                width: `${blend.accelVolume * 100}%`,
-                backgroundColor: "#f97316",
-              }}
-            />
-          </div>
-          <span className="blend-pct">{(blend.accelVolume * 100).toFixed(0)}%</span>
-        </div>
-        <div className="blend-row">
-          <span className="label">Decel</span>
-          <div className="blend-bar-bg">
-            <div
-              className="blend-bar"
-              style={{
-                width: `${blend.decelVolume * 100}%`,
-                backgroundColor: "#60a5fa",
-              }}
-            />
-          </div>
-          <span className="blend-pct">{(blend.decelVolume * 100).toFixed(0)}%</span>
+        <div className="data-row">
+          <span className="label">Range</span>
+          <span className="value">50 – 1000 Hz</span>
         </div>
       </div>
 
-      <div className="data-row">
-        <span className="label">Playback Rate</span>
-        <span className="value">{blend.playbackRate.toFixed(2)}x</span>
+      {/* Frequency bar */}
+      <div className="bar-container" style={{ marginTop: "0.5rem" }}>
+        <div
+          className="bar-fill"
+          style={{
+            width: `${audioState.normalized * 100}%`,
+            background: `linear-gradient(90deg, #4ade80, #f97316, #ef4444)`,
+          }}
+        />
       </div>
     </div>
   );

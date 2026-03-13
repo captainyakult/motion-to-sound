@@ -2,129 +2,121 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  processMotionEvent,
-  requestMotionPermission,
-  type MotionData,
-  type MotionPermissionState,
-} from "@/lib/motion";
-import { mapAccelerationToAudio, resetMappingState, type AudioBlend } from "@/lib/mapping";
-import { EngineAudioController } from "@/lib/audioEngine";
+  type VelocityData,
+  requestGpsPermission,
+  startGpsTracking,
+  stopGpsTracking,
+  processManualSpeed,
+  resetVelocityState,
+  MAX_SPEED,
+  type GpsPermissionState,
+} from "@/lib/velocity";
+import { mapVelocityToAudio, resetMappingState, type VelocityAudioState } from "@/lib/mapping";
+import { ToneAudioController } from "@/lib/audioEngine";
 import MotionDisplay from "@/components/MotionDisplay";
 import AudioStateDisplay from "@/components/AudioStateDisplay";
 import AccelerationGraph from "@/components/AccelerationGraph";
 
 const MAX_HISTORY = 100;
 
-const defaultMotion: MotionData = {
-  x: 0, y: 0, z: 0, magnitude: 0, normalized: 0,
+const defaultVelocity: VelocityData = {
+  speed: 0,
+  smoothedSpeed: 0,
+  normalized: 0,
+  accuracy: null,
+  source: "manual",
 };
 
-const defaultBlend: AudioBlend = {
-  idleVolume: 1, accelVolume: 0, decelVolume: 0,
-  engineState: "idle", playbackRate: 0.8,
+const defaultAudioState: VelocityAudioState = {
+  engineState: "idle",
+  frequency: 50,
+  normalized: 0,
 };
+
+type InputMode = "gps" | "manual";
 
 export default function Home() {
-  const [permissionState, setPermissionState] = useState<MotionPermissionState>("prompt");
-  const [motionData, setMotionData] = useState<MotionData>(defaultMotion);
-  const [blend, setBlend] = useState<AudioBlend>(defaultBlend);
-  const [audioLoaded, setAudioLoaded] = useState(false);
+  const [gpsPermission, setGpsPermission] = useState<GpsPermissionState>("prompt");
+  const [velocityData, setVelocityData] = useState<VelocityData>(defaultVelocity);
+  const [audioState, setAudioState] = useState<VelocityAudioState>(defaultAudioState);
   const [audioStarted, setAudioStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<{ time: number; magnitude: number; normalized: number }[]>([]);
-  const [simValue, setSimValue] = useState(0);
-  const [useSimulator, setUseSimulator] = useState(false);
+  const [history, setHistory] = useState<{ time: number; speed: number; frequency: number }[]>([]);
+  const [manualSpeed, setManualSpeed] = useState(0);
+  const [inputMode, setInputMode] = useState<InputMode>("gps");
 
-  const engineRef = useRef<EngineAudioController | null>(null);
+  const engineRef = useRef<ToneAudioController | null>(null);
   const startTimeRef = useRef(Date.now());
 
-  // Handle real motion events
-  const handleMotion = useCallback((event: DeviceMotionEvent) => {
-    const data = processMotionEvent(event);
-    setMotionData(data);
+  // Apply velocity data to audio
+  const applyVelocity = useCallback((data: VelocityData) => {
+    setVelocityData(data);
 
-    const audioBlend = mapAccelerationToAudio(data.normalized);
-    setBlend(audioBlend);
-    engineRef.current?.setThrottle(audioBlend);
+    const state = mapVelocityToAudio(data.normalized);
+    setAudioState(state);
+    engineRef.current?.setFrequency(data.normalized);
 
     setHistory((prev) => {
       const next = [
         ...prev,
         {
           time: (Date.now() - startTimeRef.current) / 1000,
-          magnitude: Math.min(1, data.magnitude / 20),
-          normalized: data.normalized,
+          speed: data.normalized,
+          frequency: state.frequency / 1000, // scale to 0-1 for graph
         },
       ];
       return next.slice(-MAX_HISTORY);
     });
   }, []);
 
-  // Handle simulator input
+  // GPS callback
+  const handleGpsUpdate = useCallback((data: VelocityData) => {
+    applyVelocity(data);
+  }, [applyVelocity]);
+
+  // Handle manual speed slider changes
   useEffect(() => {
-    if (!useSimulator) return;
+    if (inputMode !== "manual" || !audioStarted) return;
+    const data = processManualSpeed(manualSpeed);
+    applyVelocity(data);
+  }, [manualSpeed, inputMode, audioStarted, applyVelocity]);
 
-    const data: MotionData = {
-      x: simValue * 5,
-      y: 0,
-      z: 9.8,
-      magnitude: simValue * 20,
-      normalized: simValue,
-    };
-    setMotionData(data);
-
-    const audioBlend = mapAccelerationToAudio(data.normalized);
-    setBlend(audioBlend);
-    engineRef.current?.setThrottle(audioBlend);
-
-    setHistory((prev) => {
-      const next = [
-        ...prev,
-        {
-          time: (Date.now() - startTimeRef.current) / 1000,
-          magnitude: simValue,
-          normalized: simValue,
-        },
-      ];
-      return next.slice(-MAX_HISTORY);
-    });
-  }, [simValue, useSimulator]);
-
-  // Clean up audio on unmount
+  // Clean up on unmount
   useEffect(() => {
     return () => {
       engineRef.current?.dispose();
+      stopGpsTracking();
     };
   }, []);
 
   async function handleStart() {
     setError(null);
     resetMappingState();
+    resetVelocityState();
     startTimeRef.current = Date.now();
+    setHistory([]);
 
     try {
-      // Initialize audio engine
       if (!engineRef.current) {
-        engineRef.current = new EngineAudioController();
-        await engineRef.current.load();
-        setAudioLoaded(true);
+        engineRef.current = new ToneAudioController();
       }
 
       await engineRef.current.start();
       setAudioStarted(true);
 
-      // Try to get motion permission
-      const perm = await requestMotionPermission();
-      setPermissionState(perm);
+      if (inputMode === "gps") {
+        const perm = await requestGpsPermission();
+        setGpsPermission(perm);
 
-      if (perm === "granted") {
-        window.addEventListener("devicemotion", handleMotion);
-        setUseSimulator(false);
-      } else if (perm === "not-supported") {
-        setUseSimulator(true);
-      } else {
-        setError("Motion permission denied. Using simulator instead.");
-        setUseSimulator(true);
+        if (perm === "granted") {
+          startGpsTracking(handleGpsUpdate);
+        } else if (perm === "not-supported") {
+          setError("GPS not available on this device. Switching to manual mode.");
+          setInputMode("manual");
+        } else {
+          setError("GPS permission denied. Switching to manual mode.");
+          setInputMode("manual");
+        }
       }
     } catch (err) {
       setError(`Failed to start: ${err instanceof Error ? err.message : String(err)}`);
@@ -134,52 +126,98 @@ export default function Home() {
   function handleStop() {
     engineRef.current?.stop();
     setAudioStarted(false);
-    window.removeEventListener("devicemotion", handleMotion);
+    stopGpsTracking();
+  }
+
+  function handleModeToggle(mode: InputMode) {
+    setInputMode(mode);
+    resetVelocityState();
+    resetMappingState();
+
+    if (audioStarted) {
+      if (mode === "gps") {
+        requestGpsPermission().then((perm) => {
+          setGpsPermission(perm);
+          if (perm === "granted") {
+            startGpsTracking(handleGpsUpdate);
+          } else {
+            setError("GPS not available. Staying in manual mode.");
+            setInputMode("manual");
+          }
+        });
+      } else {
+        stopGpsTracking();
+        setManualSpeed(0);
+      }
+    }
   }
 
   return (
     <div className="app-container">
       <div className="header">
-        <h1>Engine Sound Prototype</h1>
-        <p>Phone Accelerometer → Car Engine Audio</p>
+        <h1>Bicycle Speed → Tone</h1>
+        <p>GPS velocity mapped to {"\u00A0"}50–1000 Hz</p>
       </div>
 
       {error && <div className="error-banner">{error}</div>}
 
       {!audioStarted ? (
         <button className="start-btn" onClick={handleStart}>
-          TAP TO START ENGINE
+          TAP TO START
         </button>
       ) : (
         <button className="start-btn active" onClick={handleStop}>
-          STOP ENGINE
+          STOP
         </button>
       )}
 
-      {useSimulator && audioStarted && (
-        <div className="sim-panel">
-          <h2>Accelerometer Simulator</h2>
+      {/* Input mode toggle */}
+      <div className="panel">
+        <h2>Input Mode</h2>
+        <div className="toggle-row">
+          <button
+            className={`toggle-btn ${inputMode === "gps" ? "toggle-active" : ""}`}
+            onClick={() => handleModeToggle("gps")}
+          >
+            GPS
+          </button>
+          <button
+            className={`toggle-btn ${inputMode === "manual" ? "toggle-active" : ""}`}
+            onClick={() => handleModeToggle("manual")}
+          >
+            Manual
+          </button>
+        </div>
+        {inputMode === "gps" && (
           <p className="sim-note">
-            {permissionState === "not-supported"
-              ? "DeviceMotion not available — use slider to simulate acceleration"
-              : "Motion denied — use slider to simulate"}
+            GPS Status: {gpsPermission === "granted" ? "Tracking" : gpsPermission}
+          </p>
+        )}
+      </div>
+
+      {/* Manual speed slider */}
+      {inputMode === "manual" && (
+        <div className="sim-panel">
+          <h2>Manual Speed Control</h2>
+          <p className="sim-note">
+            Drag to simulate bicycle speed (0 – {MAX_SPEED} m/s)
           </p>
           <input
             type="range"
             className="sim-slider"
             min={0}
-            max={1}
+            max={MAX_SPEED}
             step={0.01}
-            value={simValue}
-            onChange={(e) => setSimValue(parseFloat(e.target.value))}
+            value={manualSpeed}
+            onChange={(e) => setManualSpeed(parseFloat(e.target.value))}
           />
+          <div className="speed-label">{manualSpeed.toFixed(2)} m/s</div>
         </div>
       )}
 
-      <MotionDisplay data={motionData} />
+      <MotionDisplay data={velocityData} />
       <AudioStateDisplay
-        blend={blend}
-        audioLoaded={audioLoaded}
+        audioState={audioState}
         audioStarted={audioStarted}
       />
       <AccelerationGraph history={history} />
