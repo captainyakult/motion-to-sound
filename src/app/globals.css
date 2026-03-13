@@ -1,0 +1,275 @@
+:root {
+  --bg: #0a0a0a;
+  --surface: #161616;
+  --border: #2a2a2a;
+  --text: #e0e0e0;
+  --text-dim: #888;
+  --accent: #f97316;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+.app-container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  min-height: 100dvh;
+}
+
+.header {
+  text-align: center;
+  padding: 12px 0 20px;
+}
+
+.header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.header p {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.start-btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.start-btn:active {
+  background: var(--accent);
+  color: #000;
+}
+
+.start-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.start-btn.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.panel h2 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.panel h3 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin: 12px 0 8px;
+}
+
+.data-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.data-row .label {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.data-row .value {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.data-row.highlight .value {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.bar-container {
+  margin-top: 12px;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.1s ease-out;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.status-row .label {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.badge-ok {
+  background: #166534;
+  color: #4ade80;
+}
+
+.badge-warn {
+  background: #451a03;
+  color: #f97316;
+}
+
+.engine-state-badge {
+  text-align: center;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #000;
+  margin: 8px 0;
+}
+
+.blend-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.blend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.blend-row .label {
+  width: 48px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.blend-bar-bg {
+  flex: 1;
+  height: 12px;
+  background: var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.blend-bar {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.1s ease-out;
+}
+
+.blend-pct {
+  width: 36px;
+  text-align: right;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-dim);
+}
+
+.graph-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.sim-panel {
+  background: var(--surface);
+  border: 1px solid #4a3520;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.sim-panel h2 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #f97316;
+  margin-bottom: 12px;
+}
+
+.sim-slider {
+  width: 100%;
+  margin-top: 8px;
+  accent-color: var(--accent);
+}
+
+.sim-note {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  text-align: center;
+}
+
+.error-banner {
+  background: #451a1a;
+  border: 1px solid #7f1d1d;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #fca5a5;
+}
